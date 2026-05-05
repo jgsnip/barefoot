@@ -1,0 +1,161 @@
+<!DOCTYPE html>
+<html lang="nl">
+<head>
+  <meta charset="UTF-8">
+  <title>Tic Tac Toe</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      min-height: 100vh;
+      background: #1a1a2e;
+      font-family: 'Segoe UI', sans-serif;
+      color: #eee;
+    }
+
+    h1 {
+      font-size: 2rem;
+      margin-bottom: 1rem;
+      letter-spacing: 2px;
+      color: #e0e0ff;
+    }
+
+    #status {
+      font-size: 1.2rem;
+      margin-bottom: 1.5rem;
+      height: 1.6rem;
+      color: #a0c4ff;
+    }
+
+    #board {
+      display: grid;
+      grid-template-columns: repeat(3, 110px);
+      grid-template-rows: repeat(3, 110px);
+      gap: 8px;
+    }
+
+    .cell {
+      background: #16213e;
+      border: 2px solid #0f3460;
+      border-radius: 12px;
+      font-size: 3rem;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      transition: background 0.15s, transform 0.1s;
+      user-select: none;
+    }
+
+    .cell:hover:not(.taken) {
+      background: #0f3460;
+      transform: scale(1.04);
+    }
+
+    .cell.taken { cursor: default; }
+
+    .cell.x { color: #ff6b9d; }
+    .cell.o { color: #72efdd; }
+    .cell.winner { background: #0f3460; border-color: #a0c4ff; }
+
+    #restart {
+      margin-top: 2rem;
+      padding: 0.6rem 2rem;
+      font-size: 1rem;
+      background: #0f3460;
+      color: #e0e0ff;
+      border: 2px solid #a0c4ff;
+      border-radius: 8px;
+      cursor: pointer;
+      transition: background 0.15s;
+    }
+
+    #restart:hover { background: #1a4a8a; }
+  </style>
+</head>
+<body>
+  <h1>Tic Tac Toe</h1>
+  <div id="status">Jij begint — klik een vakje</div>
+  <div id="board">
+    <div class="cell" data-index="0"></div>
+    <div class="cell" data-index="1"></div>
+    <div class="cell" data-index="2"></div>
+    <div class="cell" data-index="3"></div>
+    <div class="cell" data-index="4"></div>
+    <div class="cell" data-index="5"></div>
+    <div class="cell" data-index="6"></div>
+    <div class="cell" data-index="7"></div>
+    <div class="cell" data-index="8"></div>
+  </div>
+  <button id="restart">Opnieuw</button>
+
+  <script>
+    const cells = document.querySelectorAll(".cell");
+    const status = document.getElementById("status");
+    const restart = document.getElementById("restart");
+    let gameOver = false;
+
+    cells.forEach(cell => {
+      cell.addEventListener("click", () => {
+        const index = parseInt(cell.dataset.index);
+        if (gameOver || cell.classList.contains("taken")) return;
+
+        fetch("/move", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ cell: index })
+        })
+        .then(r => r.json())
+        .then(data => {
+          if (data.error) return;
+          updateBoard(data.board);
+
+          if (data.winner === "X") {
+            highlight(data.winning_line);
+            status.textContent = "Gefeliciteerd, jij wint! 🎉";
+            gameOver = true;
+          } else if (data.winner === "O") {
+            highlight(data.winning_line);
+            status.textContent = "De computer wint. Probeer het opnieuw!";
+            gameOver = true;
+          } else if (data.winner === "draw") {
+            status.textContent = "Gelijkspel!";
+            gameOver = true;
+          } else {
+            status.textContent = "Jouw beurt";
+          }
+        });
+      });
+    });
+
+    restart.addEventListener("click", () => {
+      fetch("/reset", { method: "POST" })
+        .then(r => r.json())
+        .then(() => {
+          gameOver = false;
+          cells.forEach(cell => {
+            cell.textContent = "";
+            cell.className = "cell";
+          });
+          status.textContent = "Jij begint — klik een vakje";
+        });
+    });
+
+    function updateBoard(board) {
+      board.forEach((val, i) => {
+        const cell = cells[i];
+        if (val === "X") { cell.textContent = "✕"; cell.classList.add("taken", "x"); }
+        else if (val === "O") { cell.textContent = "○"; cell.classList.add("taken", "o"); }
+      });
+    }
+
+    function highlight(line) {
+      line.forEach(i => cells[i].classList.add("winner"));
+    }
+  </script>
+</body>
+</html>
